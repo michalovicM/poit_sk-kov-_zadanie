@@ -1,0 +1,1 @@
+# poit_sk-kov-_zadanie
