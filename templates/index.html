@@ -1,0 +1,247 @@
+<!DOCTYPE HTML>
+<html>
+   <head>
+      <title>POIT</title>
+      <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js"></script>
+      <link rel="stylesheet" href="static/libs/jquery-ui.min.css">
+      <link rel="stylesheet" href="static/libs/style.css">
+      <script src="static/libs/plotly-latest.min.js"></script>
+      <script src="static/libs/jquery-3.2.1.min.js"></script>
+      <script src="static/libs/jquery-ui.min.js"></script>
+      <script src="static/libs/gauge.min.js"></script>
+      <script type="text/javascript" charset="utf-8">
+         $( function() {
+           $( "#tabs" ).tabs({
+             event: "click"
+           });
+         });
+         $(document).ready(function() {
+           var msg = undefined; 
+           var xAx = new Array();
+           var yAx = new Array();
+           
+          var gauge = new RadialGauge({
+          renderTo: 'canvasid',
+          width: 300,
+          height: 300,
+          units: "V",
+          minValue: 0,
+          maxValue: 5,
+          majorTicks: [
+              "0",
+              "0.5",
+              "1.0",
+              "1.5",
+              "2.0",
+              "2.5",
+              "3.0",
+              "3.5",
+              "4.0",
+              "4.5",
+              "5.0"
+          ],
+          minorTicks: 2,
+          strokeTicks: true,
+          highlights: [
+              {
+                  "from": 4.0,
+                  "to": 5.0,
+                  "color": "rgba(200, 50, 50, .75)"
+              }
+          ],
+          colorplate: "#fff",
+          bordershadowwidth: 0,
+          borders: false,
+          needletype: "arrow",
+          needlewidth: 2,
+          needlecirclesize: 7,
+          needlecircleouter: true,
+          needlecircleinner: false,
+          animationduration: 500,
+          animationrule: "linear"
+          });
+         gauge.draw();
+      
+         // Define Layout
+         var layout = {
+           xaxis: {title: "x"},
+           yaxis: {title: "y"},
+           title: "data"
+         };
+      
+         namespace = '/test';
+         var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+
+         socket.on('connect', function() {
+         socket.emit('my_event', {data: 'I\'m connected!', value: 1}); });
+
+         socket.on('my_response', function(msg) {
+         console.log(msg.data);
+         $('#log').append('Received data: '+msg.data+'<br>').html();
+
+         var data = [{
+           x: xAx,
+           y: yAx,
+           mode: "lines",
+           type: "scatter"
+         }];
+
+         gauge.value = msg.data;
+
+         xAx.push(parseFloat(msg.count));
+
+         yAx.push(parseFloat(msg.data));
+
+         Plotly.newPlot("plotdiv", data, layout);
+         });
+         
+         $('#buttonValStart').click(function(event) {
+          console.log($('#buttonValStart').val());
+          socket.emit('click_eventStart', {value: $('#buttonValStart').val()});
+          return false; });
+         $('#buttonValStop').click(function(event) {
+          console.log($('#buttonValStop').val());
+          socket.emit('click_eventStop', {value: $('#buttonValStop').val()});
+         return false; });
+         $('form#disconnect').submit(function(event) {
+           socket.emit('disconnect_request');
+           return false; });      
+           
+         $('form#recordDb').submit(function(event) {
+                  var layout = {
+          title: 'Vykreslenie priebehu z databázy',
+          xaxis: {
+            title: 'x'
+          },
+          yaxis: {
+            title: 'y'
+          }
+        };
+                  
+      var $link = "dbdata/"+$('#valueDb').val();
+      
+    $.ajax({
+      type: "POST",
+      url: $link,
+      success:function(data) 
+      { console.log(data);  
+        data = JSON.parse(data);
+        console.log(data);    
+        n = Object.keys(data).length;
+        console.log(n);
+        
+        xl = [];
+        yl = [];
+        
+        for (var i=0; i< n; i++){
+          xl.push(data[i].x);
+          yl.push(data[i].y); 
+       }
+          
+        var trace = [{
+            x: xl,
+            y: yl}];  
+        
+        console.log("traces", trace);
+        Plotly.newPlot($('#plotdivId')[0],trace,layout);         
+      }
+    }).done(function( o ) {
+       // do something
+    });    
+    
+      return false });
+      
+      $('form#recordFile').submit(function(event) {
+                  var layout = {
+          title: 'Vykreslenie priebehu zo súboru TXT',
+          xaxis: {
+            title: 'x'
+          },
+          yaxis: {
+            title: 'y'
+          }
+        };
+                  
+      var $link = "read/"+$('#valueFile').val();
+      
+    $.ajax({
+      type: "POST",
+      url: $link,
+      success:function(data) 
+      { console.log(data);  
+        data = JSON.parse(data);
+        console.log(data);    
+        n = Object.keys(data).length;
+        console.log(n);
+        
+        xl = [];
+        yl = [];
+        
+        for (var i=0; i< n; i++){
+          xl.push(data[i].x);
+          yl.push(data[i].y); 
+       }
+          
+        var trace = [{
+            x: xl,
+            y: yl}];  
+        
+        console.log("traces", trace);
+        Plotly.newPlot($('#plotdivRow')[0],trace,layout);         
+      }
+    }).done(function( o ) {
+       // do something
+    });    
+    
+      return false });
+              
+         });
+      </script>
+   </head>
+   <body style="width:70%;display:inline-block">
+      <h1 class="nadpis">POIT skúškové zadanie 21/22</h1>
+      <div style="width:50%;margin: 20px 0 20px 0px; display:inline-block">
+         <button id="buttonValStart" class="ui-button"type="submit" value="send">S T A R T</button>
+         <button id="buttonValStop" class="ui-button" type="submit" value="stop">S T O P</button>
+      </div>
+
+      <form id="disconnect" method="POST" action="#">
+         <input type="submit" class="ui-button" style="width:50%; margin:20px 0 30px 0" value="O D P O J I Ť">
+      </form>
+      <div id="tabs">
+         <ul>
+            <li><a href="#tabs-1">V Ý P I S</a></li>
+            <li><a href="#tabs-2">GRAFICKÉ ZOBRAZENIE</a></li>
+            <li><a href="#tabs-3">ZOBRAZENIE CIFERNÍK</a></li>
+            <li><a href="#tabs-4">VÝPIS Z DB</a></li>
+            <li><a href="#tabs-5">VÝPIS Z TXT</a></li>
+         </ul>
+         <div id="tabs-1">
+            <h2>PRIJATÉ DÁTA Z ARDUINO:</h2>
+            <div id="log"></div>
+         </div>
+         <div id="tabs-2">
+            <div id="plotdiv" style="width:600px;height:250px;"></div>
+         </div>
+         <div id="tabs-3">
+            <canvas id="canvasid"></canvas>
+         </div>
+         <div id="tabs-4">
+            <form id = "recordDb" method="POST" action='#'>
+  <input type="text" style="width:30%;padding:5px;display: inline-block;font-size: 12px" name="value" id="valueDb" placeholder="číslo záznamu v databáze">
+  <input type="submit" style="width:15%; margin:10px auto 10px auto; padding:5px;font-size: 12px" value="ODOSLAŤ">
+</form>
+            
+            <div id="plotdivId" style="width:600px;height:250px;"></div>
+         </div>
+         
+         <div id="tabs-5">
+            <form id = "recordFile" method="POST" action='#'>
+  <input type="text" style="width:30%;padding:5px;display: inline-block;font-size: 12px" name="value" id="valueFile" placeholder="číslo záznamu v txt súbore">
+  <input type="submit" style="width:15%; margin:10px auto 10px auto; padding:5px;font-size: 12px" value="ODOSLAŤ">
+</form>
+            <div id="plotdivRow" style="width:600px;height:250px;"></div>
+         </div>
+      </div>
+   </body>
+</html>
